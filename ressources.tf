@@ -1,5 +1,15 @@
+########################################################
+## GithubToken used for the connexion to Github repo ###
+resource "azurerm_source_control_token" "githubtoken" {
+  type  = "GitHub"
+  token =  var.githubtokenvalue# To be Defined 
+}
+######## local variable for the full fqdn domain name ##
+locals {
+  webappdomain = "${var.app_cnamevalue}.${var.app_domainevalue}"
+}
 
-#########################
+######### Service plan for the azure web app ############
 resource "azurerm_service_plan" "spwebapp" {
   location            = var.splocation
   name                = var.spname
@@ -11,10 +21,12 @@ resource "azurerm_service_plan" "spwebapp" {
   worker_count                 = var.spworkercount
   zone_balancing_enabled       = var.spzonebalancing
 }
-########################
 
+################ Linux Azure web app ##################
 resource "azurerm_linux_web_app" "webapp" {
-  app_settings                      =  var.azwebappkeys #{}
+  app_settings            = {
+          "AzureWebJobs.LetEncrypt.Enabled" = var.azwebappkeys["Letsencyptenabled"]
+  }
   client_affinity_enabled           = var.azwebappclientaffinity
   client_certificate_enabled        = var.azwebappclientcertificate
   client_certificate_mode           = var.azwebappclientcertificatemode
@@ -36,7 +48,6 @@ resource "azurerm_linux_web_app" "webapp" {
 
   site_config {
     always_on                                 = var.alwayson
-    #auto_heal_enabled                        = false
     container_registry_use_managed_identity   = var.usemngdidntycontainerregistry
     default_documents                         = [
               "Default.htm",
@@ -72,56 +83,52 @@ resource "azurerm_linux_web_app" "webapp" {
   }
 }
 
-
-
+##### create and configure source control for the azure webapp ####
 resource "azurerm_app_service_source_control" "sourcecontrol" {
-  app_id             = azurerm_linux_web_app.webapp.id
-  branch             = var.githubbranch
-  repo_url           = var.githubrepo
+  app_id                 = azurerm_linux_web_app.webapp.id
+  branch                 = var.githubbranch
+  repo_url               = var.githubrepo
   rollback_enabled       = false
-  # scm_type               = (known after apply)
- # use_local_git          = true
   use_manual_integration = false
   use_mercurial          = false
-  # depends_on             = [azurerm_source_control_token.githubtoken]
+  depends_on            = [azurerm_source_control_token.githubtoken]
 }
 
-##################### to be checked befor use :
-# resource "azurerm_web_app" "example" {
-#   name                = "example-webapp"
-#   location            = azurerm_resource_group.example.location
-#   resource_group_name = azurerm_resource_group.example.name
-#   app_service_plan_id = azurerm_app_service_plan.example.id
-#   https_only = true
-# }
+### create a cname record for the custom domain for the azure webapp ###
+resource "azurerm_dns_cname_record" "cnamewebapp" {
+  name                = var.app_cnamevalue
+  resource_group_name = var.rg_dnszone
+  zone_name           = var.app_domainevalue
+  ttl                 = 300
+  record =  azurerm_linux_web_app.webapp.default_hostname
+}
 
-# resource "azurerm_app_service_source_control" "example" {
-#   resource_group_name = azurerm_resource_group.example.name
-#   name                = azurerm_web_app.example.name
-#   location            = azurerm_resource_group.example.location
-#   app_service_name    = azurerm_web_app.example.name
-#   repository_url      = "https://github.com/example/example-repo.git"
-#   branch              = "main"
-#   repository_type     = "GitHub"
-#   git_token           = var.github_token
-# }
+## create a TXT record for the verification of the ownership of domaine ##
+resource "azurerm_dns_txt_record" "txtrecord" {
+  name                = "asuid.www"
+  resource_group_name = var.rg_dnszone
+  zone_name           = var.app_domainevalue
+  ttl                 = 300
+  record {
+    value =azurerm_linux_web_app.webapp.custom_domain_verification_id 
+  }
+}
 
-# resource "azurerm_app_service_deployment_slot" "example" {
-#   resource_group_name = azurerm_resource_group.example.name
-#   name               = "example-slot"
-#   location            = azurerm_resource_group.example.location
-#   app_service_name    = azurerm_web_app.example.name
-#   slot_name           = "staging"
-# }
+####### Create a custom hostname binding for the azure web app ######### 
+resource "azurerm_app_service_custom_hostname_binding" "custombinding" {
+  hostname            = join(".", [azurerm_dns_cname_record.cnamewebapp.name, azurerm_dns_cname_record.cnamewebapp.zone_name])
+  app_service_name    =  azurerm_linux_web_app.webapp.name
+  resource_group_name = var.rgname
+}
 
-# resource "azurerm_app_service_deployment_user" "example" {
-#   resource_group_name = azurerm_resource_group.example.name
-#   name                = azurerm_web_app.example.name
-#   location            = azurerm_resource_group.example.location
-#   app_service_name    = azurerm_web_app.example.name
-#   use_local_git       = true
-# }
+########## create a managed certificate for the azure web app ##########
+resource "azurerm_app_service_managed_certificate" "managedcert" {
+  custom_hostname_binding_id = azurerm_app_service_custom_hostname_binding.custombinding.id
+}
 
-# variable "github_token" {
-#   default = "YOUR_GITHUB_TOKEN"
-# }
+########## create a certificate Binding for the azure web app ##########
+resource "azurerm_app_service_certificate_binding" "certbinding" {
+  hostname_binding_id = azurerm_app_service_custom_hostname_binding.custombinding.id
+  certificate_id      = azurerm_app_service_managed_certificate.managedcert.id
+  ssl_state           = "SniEnabled"
+}

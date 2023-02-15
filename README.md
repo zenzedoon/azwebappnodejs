@@ -20,15 +20,23 @@ No modules.
 
 | Name | Type |
 |------|------|
+| [azurerm_app_service_certificate_binding.certbinding](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_certificate_binding) | resource |
+| [azurerm_app_service_custom_hostname_binding.custombinding](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_custom_hostname_binding) | resource |
+| [azurerm_app_service_managed_certificate.managedcert](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_managed_certificate) | resource |
 | [azurerm_app_service_source_control.sourcecontrol](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_source_control) | resource |
+| [azurerm_dns_cname_record.cnamewebapp](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/dns_cname_record) | resource |
+| [azurerm_dns_txt_record.txtrecord](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/dns_txt_record) | resource |
 | [azurerm_linux_web_app.webapp](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/linux_web_app) | resource |
 | [azurerm_service_plan.spwebapp](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/service_plan) | resource |
+| [azurerm_source_control_token.githubtoken](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/source_control_token) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_alwayson"></a> [alwayson](#input\_alwayson) | should the app be loaded at all times ? | `bool` | `true` | no |
+| <a name="input_app_cnamevalue"></a> [app\_cnamevalue](#input\_app\_cnamevalue) | the cname vaule for the web app | `string` | n/a | yes |
+| <a name="input_app_domainevalue"></a> [app\_domainevalue](#input\_app\_domainevalue) | the custom domaine used for the web app | `string` | n/a | yes |
 | <a name="input_azwebappclientaffinity"></a> [azwebappclientaffinity](#input\_azwebappclientaffinity) | Should the App Service send session affinity cookies, which route client requests in the same session to the same instance? | `bool` | `false` | no |
 | <a name="input_azwebappclientcertificate"></a> [azwebappclientcertificate](#input\_azwebappclientcertificate) | Does the App Service require client certificates for incoming requests? | `bool` | `false` | no |
 | <a name="input_azwebappclientcertificatemode"></a> [azwebappclientcertificatemode](#input\_azwebappclientcertificatemode) | Mode of client certificates for this App Service: required\|Optional\|OptionalInteractiveUser | `string` | `"Optional"` | no |
@@ -40,7 +48,7 @@ No modules.
 | <a name="input_ftpsstate"></a> [ftpsstate](#input\_ftpsstate) | State of FTP / FTPS service for this function app:AllAllowed\|FtpsOnly\|Disabled | `string` | `"Disabled"` | no |
 | <a name="input_githubbranch"></a> [githubbranch](#input\_githubbranch) | The ghithub repository branch | `string` | `"main"` | no |
 | <a name="input_githubrepo"></a> [githubrepo](#input\_githubrepo) | The ghithub repository url | `string` | n/a | yes |
-| <a name="input_githubtoken"></a> [githubtoken](#input\_githubtoken) | The ghithub token | `string` | n/a | yes |
+| <a name="input_githubtokenvalue"></a> [githubtokenvalue](#input\_githubtokenvalue) | The github Token value | `string` | n/a | yes |
 | <a name="input_healthcheckenviction"></a> [healthcheckenviction](#input\_healthcheckenviction) | he amount of time in minutes that a node can be unhealthy before being removed from the load balancer | `number` | `2` | no |
 | <a name="input_http2enabled"></a> [http2enabled](#input\_http2enabled) | Specifies if the HTTP2 protocol should be enabled | `bool` | `false` | no |
 | <a name="input_loadbalancingmode"></a> [loadbalancingmode](#input\_loadbalancingmode) | The Site load balancing mode: eightedRoundRobin\|LeastRequests\|LeastResponseTime\|WeightedTotalTraffic\|RequestHash\|PerSiteRoundRobin | `string` | `"LeastRequests"` | no |
@@ -48,6 +56,7 @@ No modules.
 | <a name="input_managedpipeline"></a> [managedpipeline](#input\_managedpipeline) | Managed pipeline mode: Integrated\|Classic | `string` | `"Integrated"` | no |
 | <a name="input_nodeversion"></a> [nodeversion](#input\_nodeversion) | The node version of web app: | `string` | `"18-lts"` | no |
 | <a name="input_remotedebugging"></a> [remotedebugging](#input\_remotedebugging) | the minimum tls version | `string` | `"1.2"` | no |
+| <a name="input_rg_dnszone"></a> [rg\_dnszone](#input\_rg\_dnszone) | the ressourse group of the domaine used for the web app | `string` | n/a | yes |
 | <a name="input_rgname"></a> [rgname](#input\_rgname) | The resource group that host the azure web app | `string` | n/a | yes |
 | <a name="input_splocation"></a> [splocation](#input\_splocation) | the location of the web app | `string` | `"West Europe"` | no |
 | <a name="input_spname"></a> [spname](#input\_spname) | The azure service plan name used for the web app | `string` | n/a | yes |
@@ -63,25 +72,3 @@ No modules.
 ## Outputs
 
 No outputs.
-
-## Example
-
-resource "azurerm_resource_group" "rgwebapp" {
-  name     = "rg-webapp"
-  location = "West Europe"
-}
-
-resource "azurerm_source_control_token" "githubtoken" {
-  type  = "GitHub"
-  token = "ABCDEFGHIJIKLMNOPQRSTUVWXYZ"
-}
-
-module "azurewebapptest01" {
-  source  = "github.com/zenzedoon/azwebappnodejs"
-  spname  = "spwebapp001"
-  splocation = "West Europe"
-  rgname  = azurerm_resource_group.rgwebapp.name
-  azwebappname  = "zurewebapptest01"
-  githubtoken = azurerm_source_control_token.githubtoken.token
-  githubrepo  = "https://github.com/zenzedoon/nodejs-docs-hello-world"
-}

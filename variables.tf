@@ -163,11 +163,6 @@ variable "nodeversion" {
     default     = "18-lts"
 }
 
-variable "githubtoken" {
-    type    = string
-    description = "The ghithub token  "
-}
-
 variable "githubrepo" {
     type    = string
     description = "The ghithub repository url  "
@@ -177,4 +172,24 @@ variable "githubbranch" {
     type    = string
     description = "The ghithub repository branch  "
     default     = "main"
+}
+
+variable "githubtokenvalue"{
+  type  = string
+  description = "The github Token value"
+}
+
+variable app_cnamevalue{
+  type  = string
+  description = "the cname vaule for the web app"
+}
+
+variable app_domainevalue{
+  type  = string
+  description = "the custom domaine used for the web app"
+}
+
+variable rg_dnszone{
+  type  = string
+  description = "the ressourse group of the domaine used for the web app"
 }
